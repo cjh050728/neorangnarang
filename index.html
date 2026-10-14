@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>너랑나랑</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 로그인 → 프로필 설정 → 홈(내 카드 + 추천). 홈은 데스크톱 2단, 폰 1단 */
+:root {
+  --bg: #f5f3f7;
+  --surface: #ffffff;
+  --ink: #241f2b;
+  --muted: #6c6676;
+  --line: #e4e0ea;
+  --accent: #d94a64;
+  --accent-soft: #fbe4e9;
+  --mutual: #2a8577;
+  --mutual-soft: #dcf0ec;
+  --warn: #9a6a12;
+  --warn-soft: #fbf0d9;
+  --on-accent: #ffffff;
+  --font-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #17141c; --surface: #221e29; --ink: #efeaf4; --muted: #a79fb2; --line: #352f3e;
+  --accent: #f07189; --accent-soft: #3d2029; --mutual: #5cc4b2; --mutual-soft: #1b3531;
+  --warn: #e3b25a; --warn-soft: #382b14; --on-accent: #1a1016; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #17141c; --surface: #221e29; --ink: #efeaf4; --muted: #a79fb2; --line: #352f3e;
+  --accent: #f07189; --accent-soft: #3d2029; --mutual: #5cc4b2; --mutual-soft: #1b3531;
+  --warn: #e3b25a; --warn-soft: #382b14; --on-accent: #1a1016; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 48px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 24px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 2rem; margin: 0; line-height: 1.15; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; margin: 0; text-wrap: balance; }
+h3 { font-size: .95rem; margin: 0; font-weight: 700; }
+.sub { color: var(--muted); margin: 4px 0 0; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand .logo { font-family: var(--font-display); font-size: 1.6rem; color: var(--accent); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 18px; min-width: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 10px; padding: 4px; gap: 4px; }
+.seg button { border: 0; border-radius: 8px; padding: 10px; font: inherit; font-weight: 600; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* 로그인 */
+.auth { max-width: 420px; margin: 6vh auto 0; width: 100%; }
+.auth .panel { gap: 14px; }
+.notice { font-size: .82rem; background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 10px 12px; margin: 0; }
+.err { color: var(--accent); font-size: .85rem; margin: 0; min-height: 1.2em; }
+.or { text-align: center; color: var(--muted); font-size: .82rem; }
+
+fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
+legend { font-weight: 700; font-size: .78rem; letter-spacing: .06em; color: var(--muted); padding: 0; margin-bottom: 8px; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+label.f { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); min-width: 0; }
+input[type=text], input[type=number], input[type=password], select { width: 100%; font: inherit; font-size: .95rem; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; min-width: 0; }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible, .chip:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.chip span { display: inline-block; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); font-size: .85rem; background: var(--bg); color: var(--ink); }
+.chip input:checked + span { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip input:disabled + span { opacity: .4; }
+.hint { font-size: .78rem; color: var(--muted); margin: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.setup { max-width: 640px; margin: 0 auto; width: 100%; }
+.me-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.photo-in { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); min-width: 0; }
+.photo-in input { font-size: .8rem; max-width: 100%; }
+.imp { display: grid; gap: 6px; }
+.imp-row { display: grid; grid-template-columns: 92px 1fr 44px; gap: 8px; align-items: center; font-size: .85rem; }
+.imp-row select { padding: 5px 8px; font-size: .85rem; }
+.imp-row .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.go { border: 0; border-radius: 10px; padding: 12px 18px; font: inherit; font-weight: 700; font-size: 1rem; background: var(--accent); color: var(--on-accent); cursor: pointer; flex: 1; }
+.go:hover { filter: brightness(1.05); }
+.ghost { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 8px; padding: 7px 12px; font: inherit; font-size: .85rem; cursor: pointer; }
+.ghost:hover { color: var(--ink); }
+
+/* 홈 */
+.home { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .home { grid-template-columns: minmax(0, 1fr); } }
+.mecard { text-align: left; }
+.mecard .top-row { display: flex; gap: 14px; align-items: center; }
+.mecard .nick { font-family: var(--font-display); font-size: 1.4rem; }
+.mecard .intro { margin: 0; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: .86rem; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.bd { font-size: .76rem; padding: 3px 9px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); white-space: nowrap; }
+
+.results { display: grid; gap: 20px; min-width: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { padding: 5px 12px; border-radius: 999px; font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill.ok { background: var(--mutual-soft); color: var(--mutual); }
+.pill.no { background: var(--warn-soft); color: var(--warn); }
+.pill.mid { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.love { background: var(--accent-soft); color: var(--accent); }
+
+.top { border: 2px solid var(--accent); border-radius: 16px; background: var(--surface); padding: 20px; display: grid; gap: 16px; }
+.top-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.top-head .who { flex: 1; min-width: 160px; display: grid; gap: 4px; }
+.badge1 { justify-self: start; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: .75rem; padding: 2px 9px; border-radius: 999px; letter-spacing: .04em; }
+.big { font-family: var(--font-display); font-size: 2.6rem; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; }
+.big small { font-size: 1rem; color: var(--muted); }
+.dual { font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dual b { color: var(--mutual); }
+.reasons { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.vs { font-size: .88rem; background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 0; }
+.common { font-weight: 600; color: var(--mutual); margin: 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+
+.bars { display: grid; gap: 6px; margin-top: 6px; }
+.bar-row { display: grid; grid-template-columns: 84px 1fr 42px; gap: 8px; align-items: center; font-size: .82rem; }
+.track { height: 8px; border-radius: 4px; background: var(--bg); overflow: hidden; border: 1px solid var(--line); }
+.track i { display: block; height: 100%; background: var(--mutual); }
+.bar-row .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.qs { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.qs li { background: var(--bg); border-radius: 10px; padding: 8px 12px; font-size: .88rem; }
+
+.like-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.like { border: 1px solid var(--accent); background: transparent; color: var(--accent); border-radius: 999px; padding: 8px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+.like[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.like-msg { font-size: .86rem; margin: 0; flex: 1; min-width: 200px; }
+.like-msg.match { color: var(--accent); font-weight: 700; }
+.like-msg.wait { color: var(--muted); }
+
+.av { flex: none; width: 64px; height: 64px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-size: 30px;
+  background: var(--accent-soft); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.av img { width: 100%; height: 100%; object-fit: cover; }
+.av.sm { width: 46px; height: 46px; font-size: 22px; }
+.av.lg { width: 88px; height: 88px; font-size: 40px; }
+
+.list { display: grid; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.card > summary { list-style: none; display: grid; grid-template-columns: 28px 46px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; cursor: pointer; }
+.card > summary::-webkit-details-marker { display: none; }
+.rank { font-family: var(--font-display); font-size: 1.2rem; color: var(--muted); text-align: center; }
+.meta { min-width: 0; }
+.meta .nm { font-weight: 700; display: flex; gap: 6px; align-items: center; }
+.meta .tg { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heart { color: var(--accent); font-size: .85rem; }
+.score { text-align: right; font-variant-numeric: tabular-nums; }
+.score b { font-size: 1.25rem; color: var(--accent); }
+.score .bar { width: 90px; height: 6px; border-radius: 3px; background: var(--bg); margin-top: 4px; overflow: hidden; }
+.score .bar i { display: block; height: 100%; background: var(--accent); }
+.detail { padding: 0 14px 16px; display: grid; gap: 14px; min-width: 0; }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .84rem; min-width: 460px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .74rem; color: var(--muted); letter-spacing: .04em; font-weight: 600; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tfoot td { font-weight: 700; border-bottom: 0; }
+
+.empty { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 18px; }
+.empty h3 { margin-bottom: 6px; }
+.out, .logic { font-size: .88rem; }
+.out summary, .logic summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+.out ul { margin: 10px 0 0; padding-left: 0; list-style: none; display: grid; gap: 6px; }
+.out li { display: flex; gap: 10px; flex-wrap: wrap; }
+.out li b { min-width: 90px; }
+.out li span { color: var(--muted); }
+.logic ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.wtbl { margin-top: 10px; overflow-x: auto; }
+.wtbl table { min-width: 0; }
+/* 채팅 */
+.chat { max-width: 640px; margin: 0 auto; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.chat-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.chat-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.chat-who .nm { font-weight: 700; }
+.msgs { display: flex; flex-direction: column; gap: 8px; min-height: 280px; max-height: 55vh; overflow-y: auto; padding: 4px 2px; }
+.msg { max-width: 78%; padding: 9px 13px; border-radius: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 4px; }
+.msg.them { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.typing { color: var(--muted); font-style: italic; }
+.chat-empty { margin: auto; text-align: center; color: var(--muted); font-size: .9rem; }
+.sugg summary { cursor: pointer; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.sugg-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sugg-list button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .84rem; cursor: pointer; text-align: left; }
+.sugg-list button:hover { border-color: var(--accent); color: var(--accent); }
+.composer { display: flex; gap: 8px; }
+.composer input { flex: 1; }
+.composer .go { flex: none; padding: 9px 16px; font-size: .95rem; }
+.chatbtn { border: 0; background: var(--mutual); color: var(--on-accent); border-radius: 999px; padding: 8px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+.matchlist { display: grid; gap: 8px; }
+.matchlist .mi { display: flex; align-items: center; gap: 10px; }
+.matchlist .mi .nm { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.matchlist .chatbtn { padding: 5px 12px; font-size: .82rem; }
+@media (prefers-reduced-motion: no-preference) { .top { animation: pop .35s ease-out; } @keyframes pop { from { transform: translateY(4px); } to { transform: none; } } }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+  <!-- 1. 로그인 / 회원가입 -->
+  <section class="auth" id="screen-auth">
+    <div class="panel">
+      <div>
+        <div class="brand"><span class="logo">너랑나랑</span></div>
+        <p class="sub">나도 좋고, 상대도 나를 좋아할 사람을 이유와 함께 추천해요.</p>
+      </div>
+      <div class="seg" role="group" aria-label="로그인 또는 회원가입">
+        <button type="button" id="tab-login" aria-pressed="true">로그인</button>
+        <button type="button" id="tab-signup" aria-pressed="false">회원가입</button>
+      </div>
+      <form id="auth-form" novalidate style="display:grid;gap:12px">
+        <label class="f">닉네임<input type="text" id="a-nick" maxlength="12" autocomplete="username"></label>
+        <label class="f">비밀번호<input type="password" id="a-pw" autocomplete="current-password"></label>
+        <p class="err" id="a-err"></p>
+        <button class="go" type="submit" id="a-submit">로그인</button>
+      </form>
+      <p class="notice">계정과 프로필은 이 브라우저에만 저장돼요. 실제로 쓰는 비밀번호나 진짜 개인정보는 넣지 마세요.</p>
+      <div class="or">또는</div>
+      <button class="ghost" type="button" id="demo">예시 계정으로 둘러보기</button>
+    </div>
+  </section>
+
+  <!-- 2. 프로필 설정 -->
+  <form class="panel setup" id="screen-setup" novalidate hidden>
+    <div>
+      <h2 id="setup-title">프로필 설정</h2>
+      <p class="sub" id="setup-sub">추천에 쓰일 정보예요. 처음 값은 예시라서 내 정보로 바꿔 주세요.</p>
+    </div>
+
+    <label class="f">찾는 관계
+      <select id="lookingFor"><option>연인</option><option>친구</option></select></label>
+
+    <div class="me-head">
+      <div class="av lg" id="me-av">🐶</div>
+      <div class="photo-in">
+        <span>프로필 사진 (선택)</span>
+        <input type="file" id="photo" accept="image/*">
+        <button type="button" class="ghost" id="photo-clear" hidden>사진 지우기</button>
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>기본 정보</legend>
+      <label class="f">자기소개 한 줄<input type="text" id="intro" maxlength="40" value="러닝하고 노래 부르는 거 좋아해요"></label>
+      <div class="row">
+        <label class="f">성별<select id="gender"><option>여</option><option>남</option></select></label>
+        <label class="f">나이<input type="number" id="age" value="22" min="18" max="60"></label>
+        <label class="f">키(cm)<input type="number" id="height" value="165" min="130" max="220"></label>
+        <label class="f">MBTI<input type="text" id="mbti" value="ESTP" maxlength="4"></label>
+      </div>
+      <div class="row">
+        <label class="f">성향<select id="energy"><option>내향</option><option selected>중간</option><option>외향</option></select></label>
+        <label class="f">생활 패턴<select id="chronotype"><option>아침형</option><option selected>저녁형</option></select></label>
+        <label class="f">지역<select id="hometown"><option>서울</option><option>경기</option><option selected>강원</option><option>충청</option><option>경상</option><option>전라</option><option>제주</option></select></label>
+      </div>
+      <div class="row">
+        <label class="f">종교<select id="religion"><option>무교</option><option>기독교</option><option>천주교</option><option>불교</option><option>기타</option></select></label>
+        <label class="f">흡연<select id="smoking"><option>비흡연</option><option>흡연</option></select></label>
+        <label class="f">연락 스타일<select id="contact"><option>가끔</option><option selected>적당히</option><option>자주</option></select></label>
+      </div>
+      <div class="row">
+        <label class="f"><span id="date-label">데이트 스타일</span><select id="dateStyle"><option>집콕</option><option selected>반반</option><option>밖으로</option></select></label>
+        <label class="f">나의 상<select id="face"></select></label>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>관심사 (여러 개)</legend><div class="chips" id="interests"></div></fieldset>
+    <fieldset><legend>나의 성격 (3개)</legend><div class="chips" id="traits"></div></fieldset>
+
+    <fieldset>
+      <legend>원하는 상대</legend>
+      <div class="row">
+        <label class="f">성별<select id="w-gender"><option>남</option><option>여</option><option>상관없음</option></select></label>
+        <label class="f">나이 최소<input type="number" id="w-ageMin" value="21"></label>
+        <label class="f">나이 최대<input type="number" id="w-ageMax" value="26"></label>
+      </div>
+      <div class="row" id="height-row">
+        <label class="f">키 최소<input type="number" id="w-heightMin" value="170"></label>
+        <label class="f">키 최대<input type="number" id="w-heightMax" value="190"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="w-smokerOk"> 흡연자도 괜찮아요</label>
+      <label class="check"><input type="checkbox" id="w-sameReligionOnly"> 같은 종교만 원해요</label>
+      <div id="face-want"><p class="hint" style="margin-bottom:6px">선호하는 상 (여러 개)</p><div class="chips" id="wantFaces"></div></div>
+      <div><p class="hint" style="margin-bottom:6px">원하는 성격 (3개)</p><div class="chips" id="wantTraits"></div></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>무엇을 중요하게 볼까요</legend>
+      <label class="check"><input type="checkbox" id="custom"> 내 기준으로 바꾸기</label>
+      <p class="hint" id="imp-hint">끄면 기본 점수표로 계산해요.</p>
+      <div class="imp" id="imp"></div>
+    </fieldset>
+
+    <p class="err" id="s-err"></p>
+    <div class="actions">
+      <button type="button" class="ghost" id="setup-cancel" hidden>취소</button>
+      <button class="go" type="submit">저장하고 추천 받기</button>
+    </div>
+  </form>
+
+  <!-- 3. 홈 -->
+  <div id="screen-home" hidden style="display:grid;gap:20px">
+    <div class="brand" style="justify-content:space-between">
+      <span class="logo">너랑나랑</span>
+      <div class="actions"><button class="ghost" type="button" id="edit">프로필 수정</button><button class="ghost" type="button" id="logout">로그아웃</button></div>
+    </div>
+    <div class="home">
+      <aside class="panel mecard" id="mecard"></aside>
+      <section class="results" id="results" aria-live="polite"></section>
+    </div>
+  </div>
+
+  <!-- 4. 채팅 -->
+  <section class="chat" id="screen-chat" hidden>
+    <div class="chat-head">
+      <button class="ghost" type="button" id="chat-back">← 추천으로</button>
+      <div class="chat-who" id="chat-who"></div>
+    </div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <details class="sugg" id="sugg">
+      <summary>추천 질문 보기 (선택)</summary>
+      <div class="sugg-list" id="sugg-list"></div>
+    </details>
+    <form class="composer" id="composer" novalidate>
+      <input type="text" id="chat-input" maxlength="200" placeholder="메시지를 입력하세요" autocomplete="off">
+      <button class="go" type="submit">보내기</button>
+    </form>
+    <p class="hint">가상 프로필이라 프로필 정보(관심사, 연락 스타일 등)를 바탕으로 자동으로 답장해요.</p>
+  </section>
+</div>
+
+<script src="profiles.js"></script>
+<script src="matching.js"></script>
+<script src="chat.js"></script>
+<script>
+const INTERESTS = ["러닝", "노래", "OTT", "산책", "요리", "게임", "독서", "여행", "카페", "운동"];
+const TRAITS = ["다정함", "유머러스", "차분함", "활발함", "솔직함", "배려심", "계획적", "즉흥적", "예의 바름", "리더십"];
+const FACES = ["강아지상", "고양이상", "토끼상", "곰상", "여우상", "공룡상"];
+const FACE_EMOJI = { 강아지상: "🐶", 고양이상: "🐱", 토끼상: "🐰", 곰상: "🐻", 여우상: "🦊", 공룡상: "🦖" };
+const LEVELS = ["안 중요해", "조금", "보통", "매우 중요"];
+const MATCH_LINE = 60; // 상대 기준 점수가 이 이상이면 상대도 호감 → 매칭
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------- 저장 (이 브라우저에만) ----------
+const KEY = "neorangnarang_users", SKEY = "neorangnarang_session";
+const mem = { users: {}, session: null };
+function loadUsers() { try { return JSON.parse(localStorage.getItem(KEY)) || mem.users; } catch { return mem.users; } }
+function saveUsers(u) { mem.users = u; try { localStorage.setItem(KEY, JSON.stringify(u)); return true; } catch { return false; } }
+function getSession() { try { return localStorage.getItem(SKEY) ?? mem.session; } catch { return mem.session; } }
+function setSession(n) { mem.session = n; try { n ? localStorage.setItem(SKEY, n) : localStorage.removeItem(SKEY); } catch {} }
+async function hashPw(pw) {
+  try {
+    const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("neorangnarang:" + pw));
+    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+  } catch { return "p:" + pw; }
+}
+
+let users = loadUsers();
+let current = null;        // 로그인한 닉네임
+let setupMode = "signup";  // signup | edit
+let myPhoto = null;
+let levels = {};
+
+// ---------- 화면 전환 ----------
+function show(name) {
+  $("screen-auth").hidden = name !== "auth";
+  $("screen-setup").hidden = name !== "setup";
+  $("screen-home").hidden = name !== "home";
+  $("screen-chat").hidden = name !== "chat";
+  window.scrollTo(0, 0);
+}
+
+// ---------- 로그인 / 회원가입 ----------
+let authTab = "login";
+function setAuthTab(t) {
+  authTab = t;
+  $("tab-login").setAttribute("aria-pressed", t === "login");
+  $("tab-signup").setAttribute("aria-pressed", t === "signup");
+  $("a-submit").textContent = t === "login" ? "로그인" : "가입하고 프로필 만들기";
+  $("a-pw").autocomplete = t === "login" ? "current-password" : "new-password";
+  $("a-err").textContent = "";
+}
+$("tab-login").onclick = () => setAuthTab("login");
+$("tab-signup").onclick = () => setAuthTab("signup");
+
+$("auth-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const nick = $("a-nick").value.trim(), pw = $("a-pw").value;
+  const err = m => $("a-err").textContent = m;
+  if (!nick) return err("닉네임을 입력해 주세요.");
+  if (pw.length < 4) return err("비밀번호는 4자 이상이에요.");
+  users = loadUsers();
+  const h = await hashPw(pw);
+  if (authTab === "signup") {
+    if (users[nick] || PROFILES.some(p => p.nickname === nick)) return err("이미 있는 닉네임이에요. 다른 닉네임을 써 주세요.");
+    users[nick] = { pw: h, profile: null, likes: {} };
+    saveUsers(users);
+    current = nick; setSession(nick);
+    openSetup("signup");
+  } else {
+    if (!users[nick]) return err("가입된 닉네임이 없어요. 회원가입을 먼저 해 주세요.");
+    if (users[nick].pw !== h) return err("비밀번호가 맞지 않아요.");
+    current = nick; setSession(nick);
+    users[nick].profile ? goHome() : openSetup("signup");
+  }
+  $("a-pw").value = "";
+});
+
+$("demo").onclick = () => {
+  users = loadUsers();
+  const nick = "둘러보기";
+  if (!users[nick]) users[nick] = { pw: "demo", profile: null, likes: {} };
+  current = nick; setSession(nick);
+  if (!users[nick].profile) { fillForm(null); users[nick].profile = readForm(); saveUsers(users); }
+  goHome();
+};
+
+$("logout").onclick = () => { current = null; setSession(null); setAuthTab("login"); show("auth"); };
+
+// ---------- 프로필 설정 폼 ----------
+function chips(el, list, name, max) {
+  el.innerHTML = list.map(v => `<label class="chip"><input type="checkbox" name="${name}" value="${v}"><span>${v}</span></label>`).join("");
+  if (max) el.addEventListener("change", () => syncMax(el, max));
+}
+function syncMax(el, max) {
+  const boxes = [...el.querySelectorAll("input")];
+  const n = boxes.filter(b => b.checked).length;
+  boxes.forEach(b => b.disabled = !b.checked && n >= max);
+}
+function setChips(name, vals) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(b => b.checked = vals.includes(b.value));
+}
+const picked = name => [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(b => b.value);
+
+$("face").innerHTML = FACES.map(f => `<option>${f}</option>`).join("");
+chips($("interests"), INTERESTS, "interests");
+chips($("traits"), TRAITS, "traits", 3);
+chips($("wantTraits"), TRAITS, "wantTraits", 3);
+chips($("wantFaces"), [...FACES, "상관없음"], "wantFaces");
+
+const EXAMPLE = {
+  intro: "러닝하고 노래 부르는 거 좋아해요", lookingFor: "연인", gender: "여", age: 22, height: 165, mbti: "ESTP",
+  energy: "중간", chronotype: "저녁형", hometown: "강원", religion: "무교", smoking: "비흡연", contact: "적당히",
+  dateStyle: "반반", face: "강아지상", interests: ["러닝", "노래", "OTT", "산책"], traits: ["활발함", "유머러스", "솔직함"],
+  wantTraits: ["다정함", "배려심", "유머러스"], wantFaces: ["강아지상", "곰상"], photo: null, custom: false, levels: null,
+  want: { gender: "남", ageMin: 21, ageMax: 26, heightMin: 170, heightMax: 190, smokerOk: false, sameReligionOnly: false },
+};
+
+function fillForm(p) {
+  p = p || EXAMPLE;
+  for (const k of ["intro", "lookingFor", "gender", "age", "height", "mbti", "energy", "chronotype", "hometown", "religion", "smoking", "contact", "dateStyle", "face"]) $(k).value = p[k];
+  setChips("interests", p.interests); setChips("traits", p.traits); setChips("wantTraits", p.wantTraits);
+  setChips("wantFaces", p.wantFaces);
+  syncMax($("traits"), 3); syncMax($("wantTraits"), 3);
+  $("w-gender").value = p.want.gender; $("w-ageMin").value = p.want.ageMin; $("w-ageMax").value = p.want.ageMax;
+  $("w-heightMin").value = p.want.heightMin ?? 160; $("w-heightMax").value = p.want.heightMax ?? 190;
+  $("w-smokerOk").checked = p.want.smokerOk; $("w-sameReligionOnly").checked = p.want.sameReligionOnly;
+  myPhoto = p.photo || null;
+  $("custom").checked = !!p.custom;
+  levels = p.levels ? { ...p.levels } : levelsFromWeights(DEFAULT_WEIGHTS[p.lookingFor]);
+  applyModeToForm(); refreshMeAvatar();
+}
+
+function applyModeToForm() {
+  const m = $("lookingFor").value;
+  $("height-row").hidden = m === "친구";
+  $("face-want").hidden = m === "친구";
+  $("date-label").textContent = m === "친구" ? "노는 스타일" : "데이트 스타일";
+  renderImportance();
+}
+$("lookingFor").addEventListener("change", () => {
+  const m = $("lookingFor").value;
+  $("w-gender").value = m === "친구" ? "상관없음" : ($("gender").value === "여" ? "남" : "여");
+  levels = levelsFromWeights(DEFAULT_WEIGHTS[m]);
+  applyModeToForm();
+});
+
+function renderImportance() {
+  const m = $("lookingFor").value, custom = $("custom").checked;
+  const keys = Object.keys(DEFAULT_WEIGHTS[m]);
+  const lv = {}; keys.forEach(k => lv[k] = levels[k] ?? 0);
+  const w = custom ? weightsFromLevels(lv) : DEFAULT_WEIGHTS[m];
+  $("imp").innerHTML = keys.map(k => `
+    <div class="imp-row"><span>${itemLabel(k, m)}</span>
+      <select data-k="${k}" id="imp-${k}" ${custom ? "" : "disabled"}>${LEVELS.map((l, i) => `<option value="${i}" ${lv[k] === i ? "selected" : ""}>${l}</option>`).join("")}</select>
+      <span class="pct">${w ? Math.round(w[k]) : 0}점</span></div>`).join("");
+  $("imp-hint").textContent = custom ? "고른 중요도를 합쳐서 100점으로 바꿔요." : "끄면 기본 점수표로 계산해요.";
+}
+$("imp").addEventListener("change", e => { if (e.target.dataset.k) { levels[e.target.dataset.k] = +e.target.value; renderImportance(); } });
+$("custom").addEventListener("change", renderImportance);
+
+function avatarHTML(p, cls = "") {
+  return `<div class="av ${cls}">${p.photo ? `<img src="${p.photo}" alt="${esc(p.nickname)} 사진">` : FACE_EMOJI[p.face] || "🙂"}</div>`;
+}
+function refreshMeAvatar() {
+  $("me-av").innerHTML = myPhoto ? `<img src="${myPhoto}" alt="내 사진">` : FACE_EMOJI[$("face").value];
+  $("photo-clear").hidden = !myPhoto;
+}
+$("face").addEventListener("change", refreshMeAvatar);
+$("photo-clear").onclick = () => { myPhoto = null; $("photo").value = ""; refreshMeAvatar(); };
+// 사진은 작게 줄여서 저장 (브라우저 저장 공간이 작아서)
+$("photo").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const s = Math.min(img.width, img.height), c = document.createElement("canvas");
+    c.width = c.height = 240;
+    c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 240, 240);
+    myPhoto = c.toDataURL("image/jpeg", 0.85); URL.revokeObjectURL(url); refreshMeAvatar();
+  };
+  img.src = url;
+});
+
+function readForm() {
+  const num = id => Number($(id).value), m = $("lookingFor").value;
+  const keys = Object.keys(DEFAULT_WEIGHTS[m]); const lv = {}; keys.forEach(k => lv[k] = levels[k] ?? 0);
+  return {
+    intro: $("intro").value.trim(), lookingFor: m, gender: $("gender").value, age: num("age"), height: num("height"),
+    mbti: $("mbti").value.toUpperCase(), energy: $("energy").value, chronotype: $("chronotype").value,
+    hometown: $("hometown").value, religion: $("religion").value, smoking: $("smoking").value,
+    contact: $("contact").value, dateStyle: $("dateStyle").value, face: $("face").value, photo: myPhoto,
+    interests: picked("interests"), traits: picked("traits"), wantTraits: picked("wantTraits"),
+    wantFaces: picked("wantFaces").length ? picked("wantFaces") : ["상관없음"],
+    custom: $("custom").checked, levels: lv,
+    want: { gender: $("w-gender").value, ageMin: num("w-ageMin"), ageMax: num("w-ageMax"),
+      heightMin: num("w-heightMin"), heightMax: num("w-heightMax"),
+      smokerOk: $("w-smokerOk").checked, sameReligionOnly: $("w-sameReligionOnly").checked },
+  };
+}
+
+function openSetup(kind) {
+  setupMode = kind;
+  const u = users[current];
+  fillForm(u && u.profile);
+  $("setup-title").textContent = kind === "signup" ? `${current}님, 프로필을 만들어요` : "프로필 수정";
+  $("setup-sub").textContent = kind === "signup" ? "추천에 쓰일 정보예요. 처음 값은 예시라서 내 정보로 바꿔 주세요." : "바꾼 내용으로 다시 추천해요.";
+  $("setup-cancel").hidden = kind === "signup";
+  $("s-err").textContent = "";
+  show("setup");
+}
+$("edit").onclick = () => openSetup("edit");
+$("setup-cancel").onclick = () => goHome();
+
+$("screen-setup").addEventListener("submit", e => {
+  e.preventDefault();
+  const p = readForm(), err = m => $("s-err").textContent = m;
+  if (!p.interests.length) return err("관심사를 1개 이상 골라 주세요.");
+  if (p.traits.length !== 3 || p.wantTraits.length !== 3) return err("나의 성격과 원하는 성격을 3개씩 골라 주세요.");
+  if (p.want.ageMin > p.want.ageMax) return err("원하는 나이의 최소가 최대보다 커요.");
+  if (p.lookingFor === "연인" && p.want.heightMin > p.want.heightMax) return err("원하는 키의 최소가 최대보다 커요.");
+  if (p.custom && !weightsFromLevels(p.levels)) return err("중요도를 한 항목 이상 골라 주세요.");
+  users[current].profile = p;
+  if (!saveUsers(users)) err("");
+  goHome();
+});
+
+// ---------- 추천 화면에 쓰는 도우미 ----------
+const hasBatchim = w => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 > 0; };
+const eulreul = w => w + (hasBatchim(w) ? "을" : "를");
+
+function badges(p) {
+  const b = [];
+  b.push(p.chronotype === "저녁형" ? "🌙 밤형 인간" : "☀️ 아침형 인간");
+  if (p.contact === "자주") b.push("💬 연락 많이 하는 편");
+  if (p.dateStyle === "밖으로") b.push("🚶 밖으로파"); else if (p.dateStyle === "집콕") b.push("🏠 집콕파");
+  const I = { 카페: "☕ 카페파", 러닝: "🏃 운동파", 운동: "🏃 운동파", 여행: "✈️ 여행러", OTT: "🎬 정주행러", 노래: "🎤 노래파", 요리: "🍳 요리왕", 독서: "📚 책벌레", 게임: "🎮 게이머", 산책: "🌳 산책러" };
+  for (const i of p.interests) if (I[i] && !b.includes(I[i])) b.push(I[i]);
+  return b.slice(0, 5);
+}
+const badgeHTML = p => `<div class="badges">${badges(p).map(x => `<span class="bd">${x}</span>`).join("")}</div>`;
+
+function commonSentence(me, p) {
+  const ci = me.interests.filter(x => p.interests.includes(x));
+  const parts = [];
+  if (ci.length) parts.push(`두 분은 ${eulreul(ci.join(", "))} 좋아해요`);
+  if (me.chronotype === p.chronotype) parts.push(`둘 다 ${me.chronotype}이에요`);
+  if (me.contact === p.contact) parts.push("연락 스타일이 같아요");
+  const ct = me.traits.filter(x => p.traits.includes(x));
+  if (ct.length) parts.push(`둘 다 ${ct.join(", ")}`);
+  return parts.length ? parts.join(" · ") : "공통점은 적지만 서로 원하는 조건은 통과했어요";
+}
+
+const QUESTIONS = {
+  러닝: "러닝 좋아한다고 했는데 요즘도 자주 뛰어요?", 노래: "노래방 가면 18번 곡이 뭐예요?",
+  OTT: "요즘 정주행하는 작품 있어요?", 산책: "산책할 때 자주 가는 코스 있어요?",
+  요리: "제일 자신 있는 요리가 뭐예요?", 게임: "요즘 하는 게임 뭐예요?",
+  독서: "최근에 읽은 책 중에 추천할 만한 거 있어요?", 여행: "여행 가 본 곳 중에 가장 기억에 남는 곳은 어디예요?",
+  카페: "단골 카페 있어요? 거기서 뭐 마셔요?", 운동: "주로 어떤 운동 해요?",
+};
+function firstQuestions(me, p) {
+  const ci = me.interests.filter(x => p.interests.includes(x));
+  const pool = [...ci, ...p.interests.filter(x => !ci.includes(x))];
+  const qs = pool.slice(0, 2).map(i => QUESTIONS[i]).filter(Boolean);
+  if (qs.length < 2) qs.push("주말에 갑자기 하루가 비었다면 뭐 하고 싶어요?");
+  return qs;
+}
+
+// 항목별 궁합 % = 나 입장, 상대 입장 비슷함의 평균
+function compat(r, mode) {
+  return r.mine.items.map(i => {
+    const t = r.theirs.items.find(x => x.key === i.key);
+    const s = t ? (i.s + t.s) / 2 : i.s;
+    return { label: itemLabel(i.key, mode), pct: Math.round(s * 100) };
+  });
+}
+const barsHTML = list => `<div class="bars">${list.map(b => `
+  <div class="bar-row"><span>${b.label}</span><div class="track"><i style="width:${b.pct}%"></i></div><span class="v">${b.pct}%</span></div>`).join("")}</div>`;
+
+function likeState(r) {
+  const liked = !!users[current].likes[r.p.id];
+  if (!liked) return { liked, html: `<p class="like-msg wait">마음에 들면 ❤️를 눌러 보세요. 상대 기준 점수가 ${MATCH_LINE}점 이상이면 상대도 호감이 있는 걸로 봐요.</p>` };
+  const ok = r.theirs.total >= MATCH_LINE;
+  return { liked, ok, html: ok
+    ? `<p class="like-msg match">💕 서로 호감이 있어요! 매칭됐어요. (상대 기준 ${r.theirs.total.toFixed(1)}점)</p>`
+    : `<p class="like-msg wait">호감을 보냈어요. 상대 기준 점수가 ${r.theirs.total.toFixed(1)}점이라 아직 매칭되지 않았어요.</p>` };
+}
+function likeRow(r) {
+  const st = likeState(r);
+  return `<div class="like-row"><button type="button" class="like" data-like="${r.p.id}" aria-pressed="${st.liked}">${st.liked ? "❤️ 좋아요 취소" : "🤍 좋아요"}</button>${st.html}${st.ok ? `<button type="button" class="chatbtn" data-chat="${r.p.id}">💬 채팅하기</button>` : ""}</div>`;
+}
+
+function detailTable(r, mode) {
+  const rows = r.mine.items.map(i => {
+    const t = r.theirs.items.find(x => x.key === i.key);
+    return `<tr><td>${itemLabel(i.key, mode)}</td><td>${i.why}</td>
+      <td class="n">${i.pts.toFixed(1)} / ${Math.round(i.max)}</td><td class="n">${t ? t.pts.toFixed(1) + " / " + Math.round(t.max) : "–"}</td></tr>`;
+  }).join("");
+  return `<div class="tbl"><table><thead><tr><th>항목</th><th>근거 (내 입장)</th><th style="text-align:right">나 기준</th><th style="text-align:right">상대 기준</th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td colspan="2">합계 → 평균 ${r.final.toFixed(1)}점</td>
+    <td class="n">${r.mine.total.toFixed(1)}</td><td class="n">${r.theirs.total.toFixed(1)}</td></tr></tfoot></table></div>`;
+}
+
+// ---------- 홈 ----------
+let lastRanked = [];
+function goHome() {
+  const prof = users[current]?.profile;
+  if (!prof) return openSetup("signup");
+  show("home"); renderHome();
+}
+
+function renderHome() {
+  const prof = users[current].profile;
+  const me = { ...prof, id: "me:" + current, nickname: current };
+  const mode = me.lookingFor;
+  if (mode === "친구") me.wantFaces = ["상관없음"];
+  if (mode === "친구") { me.want = { ...me.want, heightMin: null, heightMax: null }; }
+
+  $("mecard").innerHTML = `
+    <div class="top-row">${avatarHTML(me, "lg")}<div><div class="nick">${esc(current)}</div>
+      <div class="hint">${me.age}세 · ${me.gender} · ${esc(me.mbti)} · ${me.face}</div></div></div>
+    ${me.intro ? `<p class="intro">${esc(me.intro)}</p>` : ""}
+    ${badgeHTML(me)}
+    <div class="seg" role="group" aria-label="찾는 관계">
+      <button type="button" data-mode="연인" aria-pressed="${mode === "연인"}">연인 찾기</button>
+      <button type="button" data-mode="친구" aria-pressed="${mode === "친구"}">친구 찾기</button></div>
+    <dl class="kv">
+      <dt>관심사</dt><dd>${me.interests.join(", ")}</dd>
+      <dt>나의 성격</dt><dd>${me.traits.join(", ")}</dd>
+      <dt>원하는 성격</dt><dd>${me.wantTraits.join(", ")}</dd>
+      <dt>원하는 상대</dt><dd>${me.want.gender} · ${me.want.ageMin}~${me.want.ageMax}세${mode === "연인" ? ` · ${prof.want.heightMin}~${prof.want.heightMax}cm` : ""}</dd>
+      ${mode === "연인" ? `<dt>선호하는 상</dt><dd>${me.wantFaces.join(", ")}</dd>` : ""}
+      <dt>점수표</dt><dd>${me.custom ? "내 기준" : "기본 점수표"}</dd>
+    </dl>`;
+
+  const weights = me.custom ? (weightsFromLevels(me.levels) || DEFAULT_WEIGHTS[mode]) : DEFAULT_WEIGHTS[mode];
+  // 내 프로필도 저장소에 올라감 → 비교할 때 나 자신은 제외
+  const storeAll = [...PROFILES, me];
+  const { ranked, filtered, otherMode } = runMatching(me, storeAll, weights);
+  lastRanked = ranked;
+  const ex = explainTop(ranked, mode);
+  const others = filtered.filter(f => f.reason !== "나 자신");
+  const matches = ranked.filter(r => users[current].likes[r.p.id] && r.theirs.total >= MATCH_LINE);
+
+  let html = `<div class="stats">
+    <span class="pill ok">추천 후보 ${ranked.length}명</span>
+    <span class="pill no">조건으로 걸러짐 ${others.length}명</span>
+    <span class="pill mid">${mode === "연인" ? "친구" : "연인"} 찾는 사람 ${otherMode}명 제외</span>
+    ${matches.length ? `<span class="pill love">💕 매칭 ${matches.length}명</span>` : ""}</div>`;
+
+  lastMe = me;
+  if (matches.length) {
+    $("mecard").insertAdjacentHTML("beforeend", `<div><h3 style="margin-bottom:8px">💕 매칭된 사람</h3><div class="matchlist">${matches.map(r => `
+      <div class="mi">${avatarHTML(r.p, "sm")}<span class="nm">${esc(r.p.nickname)}</span><button type="button" class="chatbtn" data-chat="${r.p.id}">💬 채팅</button></div>`).join("")}</div></div>`);
+  }
+
+  if (!ex) {
+    html += `<div class="empty"><h3>조건에 맞는 사람이 0명이에요</h3>
+      프로필 수정에서 원하는 나이·키 범위를 넓히거나, 흡연·종교 조건을 바꿔 보세요. 아래에서 누가 왜 걸러졌는지 볼 수 있어요.</div>`;
+  } else {
+    const t = ex.top;
+    html += `<article class="top">
+      <div class="top-head">${avatarHTML(t.p, "lg")}
+        <div class="who"><span class="badge1">1위</span>
+          <h2>${esc(t.p.nickname)}</h2>
+          <div class="hint">${t.p.gender === "남" ? "남자" : "여자"} · ${t.p.age}세 · ${t.p.mbti} · ${t.p.face}</div>
+          <div class="dual">나 기준 <b>${t.mine.total.toFixed(1)}</b> · 상대 기준 <b>${t.theirs.total.toFixed(1)}</b> → 평균</div></div>
+        <div class="big">${t.final.toFixed(1)}<small>점</small></div></div>
+      <p class="intro" style="margin:0">“${esc(t.p.intro)}”</p>
+      ${badgeHTML(t.p)}
+      <p class="common">${commonSentence(me, t.p)}</p>
+      <div class="two">
+        <div><h3>왜 1위인가요?</h3><ol class="reasons">${ex.lines.map(l => `<li>${l}</li>`).join("")}</ol></div>
+        <div><h3>항목별 궁합</h3>${barsHTML(compat(t, mode))}</div>
+      </div>
+      ${ex.vsSecond ? `<p class="vs">2위 ${esc(ex.vsSecond.name)}님보다 <b>${ex.vsSecond.diff.toFixed(1)}점</b> 높아요.${ex.vsSecond.by.length ? ` 차이가 난 항목: ${ex.vsSecond.by.join(", ")}` : ""}</p>` : ""}
+      <div><h3>첫 대화는 이렇게 시작해 보세요</h3><ul class="qs">${firstQuestions(me, t.p).map(q => `<li>“${q}”</li>`).join("")}</ul></div>
+      ${likeRow(t)}
+    </article>`;
+
+    html += `<div class="list">` + ranked.slice(1).map((r, i) => `
+      <details class="card">
+        <summary><span class="rank">${i + 2}</span>${avatarHTML(r.p, "sm")}
+          <div class="meta"><div class="nm">${esc(r.p.nickname)}${users[current].likes[r.p.id] ? `<span class="heart">${r.theirs.total >= MATCH_LINE ? "💕" : "❤️"}</span>` : ""}</div>
+            <div class="tg">${r.p.gender === "남" ? "남자" : "여자"} · ${r.p.age}세 · ${r.p.mbti} · ${r.p.face} · ${esc(r.p.intro)}</div></div>
+          <div class="score"><b>${r.final.toFixed(1)}</b><div class="bar"><i style="width:${r.final}%"></i></div></div>
+        </summary>
+        <div class="detail">
+          ${badgeHTML(r.p)}
+          <p class="common">${commonSentence(me, r.p)}</p>
+          <div class="two">
+            <div><h3>항목별 궁합</h3>${barsHTML(compat(r, mode))}</div>
+            <div><h3>첫 대화 추천</h3><ul class="qs">${firstQuestions(me, r.p).map(q => `<li>“${q}”</li>`).join("")}</ul></div>
+          </div>
+          ${detailTable(r, mode)}
+          ${likeRow(r)}
+        </div>
+      </details>`).join("") + `</div>`;
+  }
+
+  html += `<details class="out panel" ${ex ? "" : "open"}><summary>걸러진 사람 ${others.length}명과 이유</summary>
+    <ul>${others.map(f => `<li><b>${esc(f.p.nickname)}</b><span>${f.reason}</span></li>`).join("") || "<li><span>걸러진 사람이 없어요</span></li>"}
+    <li><b>${esc(current)}</b><span>나 자신 (추천하지 않음)</span></li></ul></details>`;
+
+
+  $("results").innerHTML = html;
+}
+
+// 좋아요 / 모드 전환
+$("screen-home").addEventListener("click", e => {
+  const chatBtn = e.target.closest("[data-chat]");
+  if (chatBtn) { openChat(+chatBtn.dataset.chat); return; }
+  const like = e.target.closest("[data-like]");
+  if (like) {
+    const id = like.dataset.like, L = users[current].likes;
+    L[id] ? delete L[id] : (L[id] = true);
+    saveUsers(users);
+    const openIds = [...document.querySelectorAll("details.card[open] [data-like]")].map(b => b.dataset.like);
+    renderHome();
+    openIds.forEach(i => { const b = document.querySelector(`details.card [data-like="${i}"]`); if (b) b.closest("details").open = true; });
+    return;
+  }
+  const m = e.target.closest("[data-mode]");
+  if (m && m.dataset.mode !== users[current].profile.lookingFor) {
+    const p = users[current].profile;
+    p.lookingFor = m.dataset.mode;
+    p.want.gender = p.lookingFor === "친구" ? "상관없음" : (p.gender === "여" ? "남" : "여");
+    if (!p.custom) p.levels = levelsFromWeights(DEFAULT_WEIGHTS[p.lookingFor]);
+    saveUsers(users); renderHome();
+  }
+});
+
+// ---------- 채팅 ----------
+let lastMe = null, chatWith = null, homeScroll = 0;
+function chatsOf() { const u = users[current]; if (!u.chats) u.chats = {}; return u.chats; }
+
+function openChat(id) {
+  const p = PROFILES.find(x => x.id === id);
+  if (!p || !lastMe) return;
+  homeScroll = window.scrollY;
+  chatWith = p;
+  $("chat-who").innerHTML = `${avatarHTML(p, "sm")}<div><div class="nm">${esc(p.nickname)}</div><div class="hint">${p.gender === "남" ? "남자" : "여자"} · ${p.age}세 · ${p.mbti} · 연락 ${p.contact}</div></div>`;
+  $("sugg-list").innerHTML = suggestions(lastMe, p)
+    .map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+  $("sugg").open = false;
+  renderMsgs();
+  show("chat");
+  $("chat-input").focus();
+}
+
+function renderMsgs(typing) {
+  const list = chatsOf()[chatWith.id] || [];
+  $("msgs").innerHTML = list.length || typing
+    ? list.map(m => `<div class="msg ${m.from}">${esc(m.text)}</div>`).join("") + (typing ? `<div class="msg them typing">${esc(chatWith.nickname)}님이 입력 중…</div>` : "")
+    : `<p class="chat-empty">💕 ${esc(chatWith.nickname)}님과 매칭됐어요!<br>먼저 인사를 건네 보세요.</p>`;
+  $("msgs").scrollTop = $("msgs").scrollHeight;
+}
+
+let pending = 0;
+function sendMsg(text) {
+  text = text.trim(); if (!text || !chatWith) return;
+  const C = chatsOf(), p = chatWith;
+  if (!C[p.id]) C[p.id] = [];
+  C[p.id].push({ from: "me", text, t: Date.now() });
+  saveUsers(users);
+  $("chat-input").value = "";
+  pending++; renderMsgs(true);
+  const history = C[p.id].slice(0, -1);
+  setTimeout(() => {
+    C[p.id].push({ from: "them", text: makeReply(p, lastMe, text, history), t: Date.now() });
+    saveUsers(users);
+    pending--;
+    if (chatWith && chatWith.id === p.id && !$("screen-chat").hidden) renderMsgs(pending > 0);
+  }, replyDelay(p));
+}
+
+$("composer").addEventListener("submit", e => { e.preventDefault(); sendMsg($("chat-input").value); });
+$("sugg-list").addEventListener("click", e => {
+  const b = e.target.closest("[data-q]"); if (!b) return;
+  $("chat-input").value = b.dataset.q; $("chat-input").focus();
+});
+$("chat-back").onclick = () => { chatWith = null; show("home"); renderHome(); window.scrollTo(0, homeScroll); };
+
+// ---------- 시작 ----------
+setAuthTab("login");
+const s = getSession();
+if (s && users[s]) { current = s; goHome(); } else show("auth");
+</script>
+
+</body>
+</html>
