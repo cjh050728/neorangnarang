@@ -175,6 +175,26 @@ tfoot td { font-weight: 700; border-bottom: 0; }
 .logic ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
 .wtbl { margin-top: 10px; overflow-x: auto; }
 .wtbl table { min-width: 0; }
+/* 나랑이 */
+.narang { border: 1px dashed var(--mutual); background: var(--mutual-soft); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+.narang-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.narang-head h3 { flex: 1; color: var(--mutual); }
+.narang-tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+.narang-tag.ai { color: var(--mutual); border-color: var(--mutual); }
+.narang-text { margin: 0; line-height: 1.65; white-space: pre-wrap; }
+.narang-text.loading::after { content: "▍"; animation: blink 1s steps(1) infinite; color: var(--mutual); }
+@keyframes blink { 50% { opacity: 0; } }
+.narang-btn { border: 1px solid var(--mutual); background: var(--surface); color: var(--mutual); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.narang-btn:disabled { opacity: .5; cursor: default; }
+.narang-note { font-size: .74rem; color: var(--muted); margin: 0; }
+.llm { font-size: .86rem; }
+.llm summary { cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.llm .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.llm .dot.ok { background: var(--mutual); } .llm .dot.fail { background: var(--warn); }
+.llm-body { display: grid; gap: 8px; margin-top: 10px; }
+.llm-body code { font-size: .78rem; background: var(--bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.llm-body ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: .8rem; color: var(--muted); }
+
 /* 채팅 */
 .chat { max-width: 640px; margin: 0 auto; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
 .chat-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
@@ -341,6 +361,7 @@ tfoot td { font-weight: 700; border-bottom: 0; }
 <script src="profiles.js"></script>
 <script src="matching.js"></script>
 <script src="chat.js"></script>
+<script src="llm.js"></script>
 <script>
 const INTERESTS = ["러닝", "노래", "OTT", "산책", "요리", "게임", "독서", "여행", "카페", "운동"];
 const TRAITS = ["다정함", "유머러스", "차분함", "활발함", "솔직함", "배려심", "계획적", "즉흥적", "예의 바름", "리더십"];
@@ -670,7 +691,8 @@ function renderHome() {
       <dt>원하는 상대</dt><dd>${me.want.gender} · ${me.want.ageMin}~${me.want.ageMax}세${mode === "연인" ? ` · ${prof.want.heightMin}~${prof.want.heightMax}cm` : ""}</dd>
       ${mode === "연인" ? `<dt>선호하는 상</dt><dd>${me.wantFaces.join(", ")}</dd>` : ""}
       <dt>점수표</dt><dd>${me.custom ? "내 기준" : "기본 점수표"}</dd>
-    </dl>`;
+    </dl>
+    ${llmPanelHTML()}`;
 
   const weights = me.custom ? (weightsFromLevels(me.levels) || DEFAULT_WEIGHTS[mode]) : DEFAULT_WEIGHTS[mode];
   // 내 프로필도 저장소에 올라감 → 비교할 때 나 자신은 제외
@@ -712,6 +734,7 @@ function renderHome() {
         <div><h3>왜 1위인가요?</h3><ol class="reasons">${ex.lines.map(l => `<li>${l}</li>`).join("")}</ol></div>
         <div><h3>항목별 궁합</h3>${barsHTML(compat(t, mode))}</div>
       </div>
+      ${narangHTML(t, 1)}
       ${ex.vsSecond ? `<p class="vs">2위 ${esc(ex.vsSecond.name)}님보다 <b>${ex.vsSecond.diff.toFixed(1)}점</b> 높아요.${ex.vsSecond.by.length ? ` 차이가 난 항목: ${ex.vsSecond.by.join(", ")}` : ""}</p>` : ""}
       <div><h3>첫 대화는 이렇게 시작해 보세요</h3><ul class="qs">${firstQuestions(me, t.p).map(q => `<li>“${q}”</li>`).join("")}</ul></div>
       ${likeRow(t)}
@@ -727,6 +750,7 @@ function renderHome() {
         <div class="detail">
           ${badgeHTML(r.p)}
           <p class="common">${commonSentence(me, r.p)}</p>
+          ${narangHTML(r, i + 2)}
           <div class="two">
             <div><h3>항목별 궁합</h3>${barsHTML(compat(r, mode))}</div>
             <div><h3>첫 대화 추천</h3><ul class="qs">${firstQuestions(me, r.p).map(q => `<li>“${q}”</li>`).join("")}</ul></div>
@@ -743,6 +767,7 @@ function renderHome() {
 
 
   $("results").innerHTML = html;
+  if (llm.status === "ok" && ranked[0]) autoExplainTop();
 }
 
 // 좋아요 / 모드 전환
@@ -767,6 +792,115 @@ $("screen-home").addEventListener("click", e => {
     if (!p.custom) p.levels = levelsFromWeights(DEFAULT_WEIGHTS[p.lookingFor]);
     saveUsers(users); renderHome();
   }
+});
+
+// ---------- 나랑이 (Ollama 설명) ----------
+const llm = { cfg: loadLLM(), status: "unknown", models: [], error: "" };
+const narangCache = {};   // 키: 사람·모드·점수 → { text, ai }
+const narangBusy = {};
+const nkey = r => `${current}|${lastMe ? lastMe.lookingFor : ""}|${r.p.id}|${r.final.toFixed(1)}`;
+
+function llmPanelHTML() {
+  const st = llm.status === "ok" ? `연결됨 · ${esc(llm.cfg.model)}` : llm.status === "fail" ? "연결 안 됨 (규칙 설명 사용 중)" : "확인 중…";
+  return `<details class="llm panel" id="llm-panel" style="padding:12px 14px" ${llm.status === "fail" ? "" : ""}>
+    <summary><span class="dot ${llm.status}"></span>${NARANG.emoji} ${NARANG.name} · ${st}</summary>
+    <div class="llm-body">
+      <label class="f">Ollama 주소<input type="text" id="llm-url" value="${esc(llm.cfg.url)}"></label>
+      <label class="f">모델<select id="llm-model">${llm.models.length ? llm.models.map(m => `<option ${m === llm.cfg.model ? "selected" : ""}>${esc(m)}</option>`).join("") : `<option value="">연결하면 목록이 나와요</option>`}</select></label>
+      <button type="button" class="ghost" id="llm-check">연결 확인</button>
+      ${llm.status === "fail" ? `<p class="narang-note">연결 안 됨: ${esc(llm.error)}</p>` : ""}
+      <p class="narang-note">${NARANG.name}는 내 컴퓨터의 Ollama로 설명을 만들어요. 처음 한 번만 설정해 주세요.</p>
+      <ol>
+        <li>Ollama 켜기 (조이 때처럼 <code>ollama run gemma3</code>)</li>
+        <li>이 사이트 주소를 허용: 환경 변수 <code>OLLAMA_ORIGINS</code> = <code>${esc(location.origin === "null" ? "*" : location.origin)}</code></li>
+        <li>Ollama를 완전히 껐다가 다시 켜기 → 연결 확인</li>
+        <li>크롬이 "로컬 네트워크 기기 접근"을 물으면 허용</li>
+      </ol>
+    </div></details>`;
+}
+
+async function checkLLM() {
+  llm.status = "unknown"; refreshLLMPanel();
+  try {
+    llm.models = await ollamaModels(llm.cfg.url);
+    if (!llm.models.length) throw new Error("설치된 모델이 없어요 (ollama pull gemma3)");
+    llm.cfg.model = pickModel(llm.models, llm.cfg.model);
+    llm.status = "ok"; saveLLM(llm.cfg);
+  } catch (e) {
+    llm.status = "fail";
+    llm.error = e.name === "AbortError" ? "응답이 없어요" : (e.message === "Failed to fetch" || e.message.includes("NetworkError")) ? "Ollama가 꺼져 있거나 이 사이트가 허용되지 않았어요" : e.message;
+  }
+  refreshLLMPanel();
+  if (llm.status === "ok" && !$("screen-home").hidden) autoExplainTop();
+}
+function refreshLLMPanel() {
+  const old = $("llm-panel"); if (!old) return;
+  const open = old.open;
+  old.outerHTML = llmPanelHTML();
+  if (open) $("llm-panel").open = true;
+}
+
+function narangHTML(r, rank) {
+  const k = nkey(r), c = narangCache[k];
+  const text = c ? c.text : ruleExplain(lastMe, r, rank, lastMe.lookingFor, itemLabel);
+  const ai = c && c.ai;
+  return `<div class="narang" data-nid="${r.p.id}" data-rank="${rank}">
+    <div class="narang-head"><h3>${NARANG.emoji} ${NARANG.name}의 설명</h3>
+      <span class="narang-tag ${ai ? "ai" : ""}">${ai ? "AI 설명 · " + esc(c.model) : "규칙 설명"}</span>
+      <button type="button" class="narang-btn" data-explain="${r.p.id}" ${narangBusy[k] ? "disabled" : ""}>${ai ? "다시 설명" : `${NARANG.name}에게 물어보기`}</button></div>
+    <p class="narang-text ${narangBusy[k] ? "loading" : ""}">${esc(narangBusy[k] ? (narangBusy[k].text || "") : text)}</p>
+    ${ai ? `<p class="narang-note">순위와 점수는 규칙으로 계산했고, ${NARANG.name}는 그 근거를 문장으로 바꿔 줬어요. 자연스러워도 틀릴 수 있으니 위 점수표도 같이 봐 주세요.</p>` : ""}
+  </div>`;
+}
+
+function updateNarangBox(id) {
+  const box = document.querySelector(`.narang[data-nid="${id}"]`);
+  const r = lastRanked.find(x => x.p.id === id);
+  if (box && r) box.outerHTML = narangHTML(r, +box.dataset.rank);
+}
+
+async function explainWithNarang(id) {
+  const r = lastRanked.find(x => x.p.id === id); if (!r) return;
+  const rank = lastRanked.indexOf(r) + 1, k = nkey(r);
+  if (narangBusy[k]) return;
+  if (llm.status !== "ok") await checkLLM();
+  if (llm.status !== "ok") {
+    const box = document.querySelector(`.narang[data-nid="${id}"] .narang-text`);
+    if (box) box.textContent = `${NARANG.name}(Ollama)에 연결하지 못했어요. 내 프로필 카드의 "${NARANG.name}" 설정을 열어 확인해 주세요. 그동안은 규칙 설명을 보여 줄게요.\n\n` + ruleExplain(lastMe, r, rank, lastMe.lookingFor, itemLabel);
+    const panel = $("llm-panel"); if (panel) panel.open = true;
+    return;
+  }
+  narangBusy[k] = { text: "" }; updateNarangBox(id);
+  const prompt = buildPrompt(factsFor(lastMe, r, rank, lastMe.lookingFor, itemLabel), r.p.nickname);
+  try {
+    const text = await narangExplain(llm.cfg, prompt, t => {
+      narangBusy[k].text = t;
+      const el = document.querySelector(`.narang[data-nid="${id}"] .narang-text`);
+      if (el) el.textContent = t;
+    });
+    narangCache[k] = { text: text || ruleExplain(lastMe, r, rank, lastMe.lookingFor, itemLabel), ai: !!text, model: llm.cfg.model };
+  } catch (e) {
+    narangCache[k] = { text: `설명을 만들다가 문제가 생겼어요 (${e.message}). 규칙 설명: ` + ruleExplain(lastMe, r, rank, lastMe.lookingFor, itemLabel), ai: false };
+  }
+  delete narangBusy[k]; updateNarangBox(id);
+}
+
+function autoExplainTop() {
+  const top = lastRanked[0];
+  if (top && !narangCache[nkey(top)] && !narangBusy[nkey(top)]) explainWithNarang(top.p.id);
+}
+
+$("screen-home").addEventListener("click", e => {
+  const b = e.target.closest("[data-explain]");
+  if (b) { e.stopPropagation(); explainWithNarang(+b.dataset.explain); return; }
+  if (e.target.closest("#llm-check")) {
+    llm.cfg.url = $("llm-url").value.trim() || LLM_DEFAULT.url;
+    llm.cfg.model = $("llm-model").value || llm.cfg.model;
+    saveLLM(llm.cfg); checkLLM();
+  }
+}, true);
+$("screen-home").addEventListener("change", e => {
+  if (e.target.id === "llm-model") { llm.cfg.model = e.target.value; saveLLM(llm.cfg); refreshLLMPanel(); }
 });
 
 // ---------- 채팅 ----------
@@ -824,6 +958,7 @@ $("chat-back").onclick = () => { chatWith = null; show("home"); renderHome(); wi
 setAuthTab("login");
 const s = getSession();
 if (s && users[s]) { current = s; goHome(); } else show("auth");
+checkLLM();
 </script>
 
 </body>
